@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>바이브코딩 실시간 시뮬레이션 갤러리</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        
+        /* 상단 헤더 */
+        header {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        header h1 { margin: 0; font-size: 2.2rem; }
+        header p { margin: 10px 0 0 0; opacity: 0.9; font-size: 1.1rem; }
+
+        /* 관리자 로그인 버튼 */
+        .admin-toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .admin-toggle-btn:hover { background-color: white; color: #1e3c72; }
+        .admin-toggle-btn.active { background-color: #e74c3c; color: white; border-color: #e74c3c; }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* 🗂️ 학급별 탭 메뉴 스타일 (고정) */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            background-color: #e9ecef;
+            color: #495057;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tab-button:hover { background-color: #dee2e6; }
+        .tab-button.active {
+            background-color: #2a5298;
+            color: white;
+            box-shadow: 0 4px 6px rgba(42, 82, 152, 0.3);
+        }
+
+        /* 업로드 폼 */
+        .upload-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 40px;
+        }
+        .upload-section h3 { margin-top: 0; color: #2c3e50; border-left: 4px solid #2a5298; padding-left: 10px; }
+        .form-group { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .form-group input[type="text"], 
+        .form-group input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+        .form-group input[type="text"] { width: 150px; }
+        .btn-submit {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 11px 25px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-submit:hover { background-color: #218838; }
+
+        /* 갤러리 격자 보드 */
+        .gallery-title { font-size: 1.5rem; color: #2c3e50; margin-bottom: 15px; }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        /* 작품 카드 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        
+        /* 카드 내 실시간 iframe 미리보기창 */
+        .card-preview-container {
+            width: 100%;
+            height: 180px;
+            position: relative;
+            background-color: #eee;
+            overflow: hidden;
+        }
+        .card-preview-container iframe {
+            width: 1024px;
+            height: 650px;
+            border: none;
+            transform: scale(0.27);
+            transform-origin: top left;
+            pointer-events: none;
+        }
+        .preview-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        .card:hover .preview-overlay { opacity: 1; }
+
+        .card-body { padding: 15px; }
+        .card-info { font-size: 0.85rem; color: #6c757d; margin-bottom: 5px; }
+        .card-student { font-size: 1.05rem; font-weight: bold; color: #212529; }
+
+        /* 관리자 삭제 버튼 */
+        .delete-btn {
+            position: absolute;
+            top: 10px; right: 10px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+            align-items: center; justify-content: center;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .delete-btn:hover { transform: scale(1.1); background-color: #c0392b; }
+
+        /* 팝업창 모달 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            position: relative;
+            width: 85%;
+            height: 80%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-iframe { width: 100%; height: 100%; border: none; }
+        .modal-close-btn {
+            position: absolute;
+            top: 15px; right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            font-size: 24px;
+            font-weight: bold;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1001;
+        }
+        .modal-close-btn:hover { background: rgba(231, 76, 60, 0.9); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .no-data { grid-column: 1 / -1; text-align: center; padding: 40px; color: #adb5bd; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>바이브코딩으로 만드는 기권과 날씨 시뮬레이션</h1>
+    <p>친구들의 시뮬레이션을 실시간 미리보기로 확인하고, 클릭하여 직접 실행해 보세요!</p>
+    <button class="admin-toggle-btn" id="adminBtn" onclick="toggleAdminMode()">⚙️ 관리자 모드</button>
+</header>
+
+<div class="container">
+    <div class="tabs" id="classTabs"></div>
+
+    <div class="upload-section">
+        <h3 id="uploadTitle">3학년 1반 작품 등록하기</h3>
+        <form id="uploadForm" onsubmit="handleUpload(event)">
+            <div class="form-group">
+                <input type="text" id="studentId" placeholder="학번 (예: 30101)" required>
+                <input type="text" id="studentName" placeholder="이름" required>
+                <input type="file" id="codeFile" accept=".html" required>
+                <button type="submit" class="btn-submit">작품 제출하기</button>
+            </div>
+        </form>
+    </div>
+
+    <h2 class="gallery-title" id="galleryTitle">3학년 1반 작품 갤러리</h2>
+    <div class="gallery-grid" id="galleryGrid"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+        <iframe class="modal-iframe" id="modalIframe" sandbox="allow-scripts allow-modals allow-same-origin"></iframe>
+    </div>
+</div>
+
+<script>
+    const ADMIN_PASSWORD = "0121"; 
+    let isAdminMode = false;
+    let currentClass = 1;
+    
+    // 1반부터 8반까지의 데이터를 독립적으로 관리할 저장소
+    const galleryData = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [] };
+
+    // 1반부터 8반까지 탭 메뉴 화면에 강제 생성
+    const tabsContainer = document.getElementById('classTabs');
+    for (let i = 1; i <= 8; i++) {
+        const btn = document.createElement('button');
+        btn.className = `tab-button ${i === 1 ? 'active' : ''}`;
+        btn.innerText = `3학년 ${i}반`;
+        btn.onclick = () => switchClass(i);
+        tabsContainer.appendChild(btn);
+    }
+
+    // 탭 클릭시 학급 전환하는 함수
+    function switchClass(classNum) {
+        currentClass = classNum;
+        document.querySelectorAll('.tab-button').forEach((btn, idx) => {
+            btn.classList.toggle('active', idx === classNum - 1);
+        });
+        document.getElementById('uploadTitle').innerText = `3학년 ${classNum}반 작품 등록하기`;
+        document.getElementById('galleryTitle').innerText = `3학년 ${classNum}반 작품 갤러리`;
+        renderGallery();
+    }
+
+    // 관리자 모드 On/Off 토글 함수
+    function toggleAdminMode() {
+        if (!isAdminMode) {
+            const pwInput = prompt("관리자 비밀번호를 입력하세요:");
+            if (pwInput === ADMIN_PASSWORD) {
+                isAdminMode = true;
+                document.getElementById('adminBtn').innerText = "🔒 관리자 모드 해제";
+                document.getElementById('adminBtn').classList.add('active');
+                alert("관리자 모드가 활성화되었습니다. 카드 우측 상단의 🗑️ 버튼으로 작품을 삭제할 수 있습니다.");
+            } else if (pwInput !== null) {
+                alert("비밀번호가 일치하지 않습니다.");
+            }
+        } else {
+            isAdminMode = false;
+            document.getElementById('adminBtn').innerText = "⚙️ 관리자 모드";
+            document.getElementById('adminBtn').classList.remove('active');
+        }
+        renderGallery();
+    }
+
+    // 파일 업로드 처리 (안전한 Blob URL 연동)
+    function handleUpload(event) {
+        event.preventDefault();
+
+        const idInput = document.getElementById('studentId');
+        const nameInput = document.getElementById('studentName');
+        const fileInput = document.getElementById('codeFile');
+
+        if (!fileInput.files[0]) return;
+        const file = fileInput.files[0];
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const fileContent = e.target.result;
+
+            // 브라우저 보안 격리 우회를 위한 파일 인코딩 및 가상 URL 빌드
+            const blob = new Blob([fileContent], { type: 'text/html;charset=utf-8' });
+            const blobURL = URL.createObjectURL(blob);
+
+            const newWork = {
+                uid: Date.now(),
+                id: idInput.value,
+                name: nameInput.value,
+                blobUrl: blobURL,
+                date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+
+            galleryData[currentClass].push(newWork);
+            idInput.value = ''; nameInput.value = ''; fileInput.value = '';
+            renderGallery();
+            alert('작품이 정상적으로 제출되었습니다!');
+        };
+        reader.readAsText(file, "UTF-8");
+    }
+
+    // 관리자 전용 삭제 기능
+    function deleteCard(uid, studentName, event) {
+        event.stopPropagation(); // 삭제 버튼 클릭시 시연창 팝업이 강제 실행되는 버그 차단
+        if (confirm(`정말 [ ${studentName} ] 학생의 작품을 삭제하시겠습니까?`)) {
+            const target = galleryData[currentClass].find(work => work.uid === uid);
+            if(target) URL.revokeObjectURL(target.blobUrl); // 가상 메모리 해제
+
+            galleryData[currentClass] = galleryData[currentClass].filter(work => work.uid !== uid);
+            renderGallery();
+        }
+    }
+
+    // 갤러리 보드 렌더링 함수
+    function renderGallery() {
+        const grid = document.getElementById('galleryGrid');
+        grid.innerHTML = '';
+        const currentList = galleryData[currentClass];
+
+        if (currentList.length === 0) {
+            grid.innerHTML = `<div class="no-data">아직 등록된 작품이 없습니다. 첫 번째 작품을 등록해 보세요!</div>`;
+            return;
+        }
+
+        // 학번순 정렬 정렬
+        currentList.sort((a, b) => a.id.localeCompare(b.id));
+
+        currentList.forEach(work => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => openModal(work.blobUrl);
+
+            const deleteDisplay = isAdminMode ? 'flex' : 'none';
+
+            card.innerHTML = `
+                <button class="delete-btn" style="display: ${deleteDisplay}" onclick="deleteCard(${work.uid}, '${work.name}', event)">🗑️</button>
+                <div class="card-preview-container">
+                    <iframe src="${work.blobUrl}" sandbox="allow-scripts allow-same-origin"></iframe>
+                    <div class="preview-overlay">클릭하여 크게 시연하기</div>
+                </div>
+                <div class="card-body">
+                    <div class="card-info">${work.id} | 제출 ${work.date}</div>
+                    <div class="card-student">${work.name} 학생의 시뮬레이션</div>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // 시연 팝업 열기
+    function openModal(blobUrl) {
+        const modal = document.getElementById('modalOverlay');
+        const iframe = document.getElementById('modalIframe');
+        iframe.src = blobUrl;
+        modal.style.display = 'flex';
+    }
+
+    // 시연 팝업 닫기
+    function closeModal() {
+        const modal = document.getElementById('modalOverlay');
+        const iframe = document.getElementById('modalIframe');
+        iframe.src = '';
+        modal.style.display = 'none';
+    }
+
+    // 첫 로드시 1반 기본 활성화
+    renderGallery();
+</script>
+
+</body>
+</html>
